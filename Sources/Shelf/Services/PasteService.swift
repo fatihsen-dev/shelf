@@ -7,9 +7,7 @@ final class PasteService {
 
     func paste(_ item: ClipboardItem) {
         writeToPasteboard(item)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-            self.simulatePasteKeystroke()
-        }
+        simulatePasteKeystroke()
     }
 
     func copyOnly(_ item: ClipboardItem) {

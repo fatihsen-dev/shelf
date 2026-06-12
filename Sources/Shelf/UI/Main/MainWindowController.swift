@@ -11,6 +11,7 @@ final class MainWindowController: NSObject {
 
     private var query: String = ""
     private var clickOutsideMonitor: Any?
+    private var previousApp: NSRunningApplication?
 
     init(repository: ClipboardRepository) {
         self.repository = repository
@@ -32,7 +33,8 @@ final class MainWindowController: NSObject {
     func show() {
         if window == nil { buildWindow() }
         guard let window = window else { return }
-        positionAtCursor(window: window)
+        previousApp = NSWorkspace.shared.frontmostApplication
+        positionAtCenter(window: window)
         refreshItems()
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
@@ -73,6 +75,7 @@ final class MainWindowController: NSObject {
         win.standardWindowButton(.closeButton)?.isHidden = true
         win.standardWindowButton(.miniaturizeButton)?.isHidden = true
         win.standardWindowButton(.zoomButton)?.isHidden = true
+        win.isMovable = false
 
         let content = NSView(frame: NSRect(origin: .zero, size: size))
         content.wantsLayer = true
@@ -90,10 +93,10 @@ final class MainWindowController: NSObject {
             searchField.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             searchField.heightAnchor.constraint(equalToConstant: Theme.Sizes.searchHeight),
 
-            listView.topAnchor.constraint(equalTo: searchField.bottomAnchor),
-            listView.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            listView.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            listView.bottomAnchor.constraint(equalTo: content.bottomAnchor)
+            listView.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: Theme.Spacing.s),
+            listView.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: Theme.Spacing.s),
+            listView.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -Theme.Spacing.s),
+            listView.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -Theme.Spacing.s)
         ])
 
         win.contentView = content
@@ -123,25 +126,22 @@ final class MainWindowController: NSObject {
 
     private func pasteItem(_ item: ClipboardItem) {
         close()
-        pasteService.paste(item)
+        let target = previousApp
+        previousApp = nil
+        target?.activate(options: .activateIgnoringOtherApps)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+            self.pasteService.paste(item)
+        }
     }
 
-    private func positionAtCursor(window: NSWindow) {
-        let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main
-        guard let screen = screen else { return }
-        let size = window.frame.size
+    private func positionAtCenter(window: NSWindow) {
+        guard let screen = NSScreen.main else { return }
         let visible = screen.visibleFrame
-        let hasValidMouse = visible.contains(mouse)
-
-        var origin: NSPoint
-        if hasValidMouse {
-            origin = NSPoint(x: mouse.x, y: mouse.y - size.height)
-        } else {
-            origin = NSPoint(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2)
-        }
-        origin.x = max(visible.minX + 12, min(visible.maxX - size.width - 12, origin.x))
-        origin.y = max(visible.minY + 12, min(visible.maxY - size.height - 12, origin.y))
+        let size = window.frame.size
+        let origin = NSPoint(
+            x: visible.midX - size.width / 2,
+            y: visible.midY - size.height / 2
+        )
         window.setFrameOrigin(origin)
     }
 }

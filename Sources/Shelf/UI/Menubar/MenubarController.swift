@@ -2,7 +2,6 @@ import AppKit
 
 final class MenubarController {
     private let repository: ClipboardRepository
-    private let preferences = PreferencesStore.shared
     private let pasteService = PasteService()
     private var statusItem: NSStatusItem?
 
@@ -22,8 +21,7 @@ final class MenubarController {
     func install() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            let image = NSImage(systemSymbolName: "clipboard", accessibilityDescription: "Shelf")
-            image?.isTemplate = true
+            let image = menubarImage()
             button.image = image
         }
         statusItem = item
@@ -60,11 +58,6 @@ final class MenubarController {
 
         menu.addItem(.separator())
 
-        let pauseTitle = preferences.isMonitoringPaused ? "Resume Monitoring" : "Pause Monitoring"
-        let pauseItem = NSMenuItem(title: pauseTitle, action: #selector(togglePause), keyEquivalent: "")
-        pauseItem.target = self
-        menu.addItem(pauseItem)
-
         let clearItem = NSMenuItem(title: "Clear History…", action: #selector(clearHistory), keyEquivalent: "")
         clearItem.target = self
         menu.addItem(clearItem)
@@ -82,6 +75,18 @@ final class MenubarController {
         statusItem.menu = menu
     }
 
+    private func menubarImage() -> NSImage? {
+        let bundle = Bundle.main
+        if let url = bundle.url(forResource: "MenubarIcon", withExtension: "png"),
+           let img = NSImage(contentsOf: url) {
+            img.size = NSSize(width: 18, height: 18)
+            return img
+        }
+        let fallback = NSImage(systemSymbolName: "clipboard", accessibilityDescription: "Shelf")
+        fallback?.isTemplate = true
+        return fallback
+    }
+
     private func recentTitle(for item: ClipboardItem) -> String {
         let raw = item.previewText.replacingOccurrences(of: "\n", with: " ")
         let trimmed = raw.trimmingCharacters(in: .whitespaces)
@@ -91,11 +96,6 @@ final class MenubarController {
     @objc private func openMain() { onOpenMain() }
     @objc private func openSettings() { onOpenSettings() }
     @objc private func quit() { NSApp.terminate(nil) }
-
-    @objc private func togglePause() {
-        preferences.isMonitoringPaused.toggle()
-        rebuildMenu()
-    }
 
     @objc private func clearHistory() {
         let alert = NSAlert()

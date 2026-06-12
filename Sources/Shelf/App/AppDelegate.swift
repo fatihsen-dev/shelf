@@ -22,7 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         repository.load()
         menubar.install()
-        monitor.setPaused(preferences.isMonitoringPaused)
+        requestAccessibilityIfNeeded()
         monitor.onCapture = { [weak self] item in
             self?.repository.insert(item)
         }
@@ -30,13 +30,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkey.register(keyCode: preferences.hotkeyKeyCode,
                         modifiers: preferences.hotkeyModifiers) { [weak self] in
             self?.mainController.toggle()
-        }
-        UserDefaults.standard.addObserver(self, forKeyPath: "pauseMonitoring", options: .new, context: nil)
-    }
-
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == "pauseMonitoring" {
-            monitor.setPaused(preferences.isMonitoringPaused)
         }
     }
 
@@ -47,5 +40,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func openSettings() {
         settingsController.show()
+    }
+
+    private func requestAccessibilityIfNeeded() {
+        guard !AXIsProcessTrusted() else { return }
+        let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
+        AXIsProcessTrustedWithOptions(options)
     }
 }

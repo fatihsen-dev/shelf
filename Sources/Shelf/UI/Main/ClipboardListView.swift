@@ -31,6 +31,7 @@ final class ClipboardListView: NSView, NSTableViewDataSource, NSTableViewDelegat
         tableView.action = #selector(handleClick)
         tableView.doubleAction = #selector(handleDoubleClick)
         tableView.target = self
+        tableView.refusesFirstResponder = true
 
         scrollView.documentView = tableView
         scrollView.drawsBackground = false
@@ -60,6 +61,14 @@ final class ClipboardListView: NSView, NSTableViewDataSource, NSTableViewDelegat
         let next = max(0, min(items.count - 1, current + delta))
         tableView.selectRowIndexes(IndexSet(integer: next), byExtendingSelection: false)
         tableView.scrollRowToVisible(next)
+        clearAllHoverStates()
+    }
+
+    private func clearAllHoverStates() {
+        let range = tableView.rows(in: tableView.visibleRect)
+        for row in range.location ..< (range.location + range.length) {
+            (tableView.rowView(atRow: row, makeIfNecessary: false) as? ClipboardCellView)?.isHovering = false
+        }
     }
 
     func activateSelection() {
@@ -79,7 +88,7 @@ final class ClipboardListView: NSView, NSTableViewDataSource, NSTableViewDelegat
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? { nil }
 
     @objc private func handleClick() {
-        tableView.window?.makeFirstResponder(tableView)
+        activateSelection()
     }
 
     @objc private func handleDoubleClick() {

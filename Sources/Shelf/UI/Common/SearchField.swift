@@ -20,7 +20,7 @@ final class SearchField: NSView, NSTextFieldDelegate {
         wantsLayer = true
 
         iconView.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
-        iconView.symbolConfiguration = .init(pointSize: 14, weight: .medium)
+        iconView.symbolConfiguration = .init(pointSize: 18, weight: .medium)
         iconView.contentTintColor = Theme.Color.secondaryText
         iconView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(iconView)

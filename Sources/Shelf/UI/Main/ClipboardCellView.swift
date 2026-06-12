@@ -1,8 +1,10 @@
 import AppKit
 
 final class ClipboardCellView: NSTableRowView {
+    private let imageStore = ImageStore()
     var item: ClipboardItem? { didSet { configure() } }
     var isHovering = false { didSet { needsDisplay = true } }
+    override var isSelected: Bool { didSet { needsDisplay = true } }
 
     private let iconContainer = NSView()
     private let iconView = NSImageView()
@@ -24,6 +26,7 @@ final class ClipboardCellView: NSTableRowView {
         iconContainer.wantsLayer = true
         iconContainer.layer?.cornerRadius = Theme.Radius.small
         iconContainer.layer?.backgroundColor = Theme.Color.iconBackground.cgColor
+        iconContainer.layer?.masksToBounds = true
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         addSubview(iconContainer)
 
@@ -37,6 +40,7 @@ final class ClipboardCellView: NSTableRowView {
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.maximumNumberOfLines = 1
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         addSubview(titleLabel)
 
         subtitleLabel.font = Theme.Font.caption
@@ -48,6 +52,7 @@ final class ClipboardCellView: NSTableRowView {
         badgeLabel.font = Theme.Font.caption
         badgeLabel.textColor = Theme.Color.tertiaryText
         badgeLabel.translatesAutoresizingMaskIntoConstraints = false
+        badgeLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         addSubview(badgeLabel)
 
         pinIcon.image = NSImage(systemSymbolName: "pin.fill", accessibilityDescription: nil)
@@ -63,11 +68,13 @@ final class ClipboardCellView: NSTableRowView {
             iconContainer.widthAnchor.constraint(equalToConstant: iconSize),
             iconContainer.heightAnchor.constraint(equalToConstant: iconSize),
 
-            iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
-            iconView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
+            iconView.topAnchor.constraint(equalTo: iconContainer.topAnchor),
+            iconView.bottomAnchor.constraint(equalTo: iconContainer.bottomAnchor),
+            iconView.leadingAnchor.constraint(equalTo: iconContainer.leadingAnchor),
+            iconView.trailingAnchor.constraint(equalTo: iconContainer.trailingAnchor),
 
             titleLabel.leadingAnchor.constraint(equalTo: iconContainer.trailingAnchor, constant: Theme.Spacing.m),
-            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: badgeLabel.leadingAnchor, constant: -Theme.Spacing.s),
+            titleLabel.trailingAnchor.constraint(equalTo: badgeLabel.leadingAnchor, constant: -Theme.Spacing.s),
             titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 10),
 
             subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
@@ -109,7 +116,16 @@ final class ClipboardCellView: NSTableRowView {
 
     private func configure() {
         guard let item = item else { return }
-        iconView.image = NSImage(systemSymbolName: item.type.iconName, accessibilityDescription: nil)
+        if item.type == .image, let filename = item.imageFilename,
+           let img = imageStore.loadImage(filename: filename) {
+            iconView.image = img
+            iconView.imageScaling = .scaleProportionallyUpOrDown
+            iconContainer.layer?.backgroundColor = NSColor.clear.cgColor
+        } else {
+            iconView.image = NSImage(systemSymbolName: item.type.iconName, accessibilityDescription: nil)
+            iconView.imageScaling = .scaleNone
+            iconContainer.layer?.backgroundColor = Theme.Color.iconBackground.cgColor
+        }
         titleLabel.stringValue = previewTitle(for: item)
         subtitleLabel.stringValue = subtitle(for: item)
         badgeLabel.stringValue = relativeTime(item.createdAt)

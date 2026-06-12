@@ -17,9 +17,11 @@ final class ClipboardMonitor {
     func start() {
         lastChangeCount = pasteboard.changeCount
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] _ in
+        let t = Timer(timeInterval: pollInterval, repeats: true) { [weak self] _ in
             self?.tick()
         }
+        RunLoop.main.add(t, forMode: .common)
+        timer = t
     }
 
     func stop() {
