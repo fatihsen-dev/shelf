@@ -5,43 +5,29 @@ final class MainWindowController: NSObject {
     private let pasteService = PasteService()
 
     private var window: MainWindow?
-    private let background = BlurredBackgroundView()
-    private let searchField = SearchField()
-    private let listView = ClipboardListView()
-
-    private var query: String = ""
+    private var shelfView: ShelfView?
     private var clickOutsideMonitor: Any?
     private var previousApp: NSRunningApplication?
 
     init(repository: ClipboardRepository) {
         self.repository = repository
         super.init()
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(repositoryChanged),
-                                               name: ClipboardRepository.didChangeNotification,
-                                               object: nil)
     }
 
     func toggle() {
-        if let win = window, win.isVisible {
-            close()
-        } else {
-            show()
-        }
+        if let win = window, win.isVisible { close() } else { show() }
     }
 
     func show() {
         if window == nil { buildWindow() }
-        guard let window = window else { return }
+        guard let window = window, let shelf = shelfView else { return }
         previousApp = NSWorkspace.shared.frontmostApplication
-        positionAtCenter(window: window)
-        refreshItems()
+        positionAtBottom(window: window)
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
-        searchField.reset()
-        searchField.focus()
-        listView.selectFirst()
+        shelf.resetSearch()
+        shelf.focusSearch()
+        shelf.selectFirst()
         startClickOutsideMonitor()
     }
 
@@ -53,75 +39,69 @@ final class MainWindowController: NSObject {
         window?.orderOut(nil)
     }
 
-    private func startClickOutsideMonitor() {
-        clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            self?.close()
-        }
-    }
-
     private func buildWindow() {
-        let size = NSSize(width: Theme.Sizes.windowWidth, height: Theme.Sizes.windowHeight)
-        let win = MainWindow(contentRect: NSRect(origin: .zero, size: size),
-                             styleMask: [.titled, .closable],
-                             backing: .buffered,
-                             defer: false)
-        win.title = "Shelf"
+        let w = Theme.Sizes.windowW
+        let h = Theme.Sizes.shelfH
+
+        let win = MainWindow(
+            contentRect: NSRect(x: 0, y: 0, width: w, height: h),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
         win.level = .floating
         win.isReleasedWhenClosed = false
         win.animationBehavior = .none
-        win.titleVisibility = .hidden
         win.titlebarAppearsTransparent = true
+        win.titleVisibility = .hidden
         win.styleMask.insert(.fullSizeContentView)
         win.standardWindowButton(.closeButton)?.isHidden = true
         win.standardWindowButton(.miniaturizeButton)?.isHidden = true
         win.standardWindowButton(.zoomButton)?.isHidden = true
         win.isMovable = false
+        win.backgroundColor = .clear
+        win.isOpaque = false
 
-        let content = NSView(frame: NSRect(origin: .zero, size: size))
-        content.wantsLayer = true
-        content.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        // Use a plain wrapper as contentView — window auto-manages its frame.
+        // ShelfView is constrained inside it.
+        let wrapper = NSView()
+        win.contentView = wrapper
 
-        searchField.translatesAutoresizingMaskIntoConstraints = false
-        content.addSubview(searchField)
-
-        listView.translatesAutoresizingMaskIntoConstraints = false
-        content.addSubview(listView)
-
+        let shelf = ShelfView(repository: repository)
+        shelf.translatesAutoresizingMaskIntoConstraints = false
+        wrapper.addSubview(shelf)
         NSLayoutConstraint.activate([
-            searchField.topAnchor.constraint(equalTo: content.topAnchor),
-            searchField.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            searchField.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            searchField.heightAnchor.constraint(equalToConstant: Theme.Sizes.searchHeight),
-
-            listView.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: Theme.Spacing.s),
-            listView.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: Theme.Spacing.s),
-            listView.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -Theme.Spacing.s),
-            listView.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -Theme.Spacing.s)
+            shelf.topAnchor.constraint(equalTo: wrapper.topAnchor),
+            shelf.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
+            shelf.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
+            shelf.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
         ])
 
-        win.contentView = content
-
-        searchField.onChange = { [weak self] q in
-            self?.query = q
-            self?.refreshItems()
-            self?.listView.selectFirst()
+        shelf.onSelect       = { [weak self] item in self?.pasteItem(item) }
+        shelf.onOpenSettings = { [weak self] in self?.openSettings() }
+        win.onKey            = { [weak self, weak shelf] event in
+            if event.keyCode == 53 { self?.close(); return true }
+            return shelf?.handleKey(event) ?? false
         }
-        searchField.onSubmit = { [weak self] in self?.listView.activateSelection() }
-        searchField.onArrowDown = { [weak self] in self?.listView.moveSelection(1) }
-        searchField.onArrowUp = { [weak self] in self?.listView.moveSelection(-1) }
-        searchField.onEscape = { [weak self] in self?.close() }
-
-        listView.onSelect = { [weak self] item in self?.pasteItem(item) }
 
         window = win
+        shelfView = shelf
     }
 
-    private func refreshItems() {
-        listView.items = repository.search(query)
+    private func positionAtBottom(window: NSWindow) {
+        guard let screen = NSScreen.main else { return }
+        let visible = screen.visibleFrame
+        let size = window.frame.size
+        let x = visible.midX - size.width / 2
+        let y = visible.minY + Theme.Sizes.windowBottomGap
+        window.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
-    @objc private func repositoryChanged() {
-        DispatchQueue.main.async { [weak self] in self?.refreshItems() }
+    private func startClickOutsideMonitor() {
+        clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown]
+        ) { [weak self] _ in self?.close() }
+
     }
 
     private func pasteItem(_ item: ClipboardItem) {
@@ -134,14 +114,18 @@ final class MainWindowController: NSObject {
         }
     }
 
-    private func positionAtCenter(window: NSWindow) {
-        guard let screen = NSScreen.main else { return }
-        let visible = screen.visibleFrame
-        let size = window.frame.size
-        let origin = NSPoint(
-            x: visible.midX - size.width / 2,
-            y: visible.midY - size.height / 2
-        )
-        window.setFrameOrigin(origin)
+    private func openSettings() {
+        close()
+        NotificationCenter.default.post(name: .shelfOpenSettings, object: nil)
     }
+}
+
+extension Notification.Name {
+    static let shelfOpenSettings      = Notification.Name("shelf.openSettings")
+    static let shelfClearHistory      = Notification.Name("shelf.clearHistory")
+    static let shelfSetPaused         = Notification.Name("shelf.setPaused")
+    static let shelfThemeChanged      = Notification.Name("shelf.themeChanged")
+    static let shelfLaunchAtLogin     = Notification.Name("shelf.launchAtLogin")
+    static let shelfMenuBarIconChanged = Notification.Name("shelf.menuBarIconChanged")
+    static let shelfHotkeyChanged      = Notification.Name("shelf.hotkeyChanged")
 }

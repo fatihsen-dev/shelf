@@ -21,11 +21,21 @@ final class MenubarController {
     func install() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            let image = menubarImage()
-            button.image = image
+            button.image = menubarImage()
         }
         statusItem = item
         rebuildMenu()
+    }
+
+    func setVisible(_ visible: Bool) {
+        if visible {
+            if statusItem == nil { install() }
+        } else {
+            if let item = statusItem {
+                NSStatusBar.system.removeStatusItem(item)
+                statusItem = nil
+            }
+        }
     }
 
     @objc private func rebuildMenu() {
@@ -34,6 +44,7 @@ final class MenubarController {
 
         let openItem = NSMenuItem(title: "Open Shelf", action: #selector(openMain), keyEquivalent: "")
         openItem.target = self
+        openItem.image = menuItemIcon("tray.fill")
         menu.addItem(openItem)
 
         menu.addItem(.separator())
@@ -52,6 +63,7 @@ final class MenubarController {
                 let menuItem = NSMenuItem(title: title, action: #selector(pasteRecent(_:)), keyEquivalent: "\(idx + 1)")
                 menuItem.target = self
                 menuItem.representedObject = item.id
+                menuItem.image = menuItemIcon(recentIcon(for: item))
                 menu.addItem(menuItem)
             }
         }
@@ -60,16 +72,19 @@ final class MenubarController {
 
         let clearItem = NSMenuItem(title: "Clear History…", action: #selector(clearHistory), keyEquivalent: "")
         clearItem.target = self
+        clearItem.image = menuItemIcon("trash")
         menu.addItem(clearItem)
 
         menu.addItem(.separator())
 
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
+        settingsItem.image = menuItemIcon("gear")
         menu.addItem(settingsItem)
 
         let quitItem = NSMenuItem(title: "Quit Shelf", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
+        quitItem.image = menuItemIcon("power")
         menu.addItem(quitItem)
 
         statusItem.menu = menu
@@ -87,10 +102,26 @@ final class MenubarController {
         return fallback
     }
 
+    private func menuItemIcon(_ symbolName: String) -> NSImage? {
+        let img = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)
+        img?.isTemplate = true
+        return img
+    }
+
+    private func recentIcon(for item: ClipboardItem) -> String {
+        switch item.type {
+        case .text:  return "doc.text"
+        case .link:  return "link"
+        case .image: return "photo"
+        case .color: return "paintpalette"
+        case .file:  return "doc"
+        }
+    }
+
     private func recentTitle(for item: ClipboardItem) -> String {
         let raw = item.previewText.replacingOccurrences(of: "\n", with: " ")
         let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        return trimmed.count > 48 ? String(trimmed.prefix(48)) + "…" : trimmed
+        return trimmed.count > 32 ? String(trimmed.prefix(32)) + "…" : trimmed
     }
 
     @objc private func openMain() { onOpenMain() }

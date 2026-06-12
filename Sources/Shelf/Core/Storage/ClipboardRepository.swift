@@ -6,7 +6,6 @@ final class ClipboardRepository {
     private let storage: StorageManager
     private(set) var items: [ClipboardItem] = []
     private let queue = DispatchQueue(label: "shelf.repository", qos: .userInitiated)
-    private let maxItems = 500
 
     init(storage: StorageManager) {
         self.storage = storage
@@ -44,7 +43,8 @@ final class ClipboardRepository {
     }
 
     func clearAll(keepPinned: Bool = true) {
-        items = keepPinned ? items.filter { $0.isPinned } : []
+        let shouldKeep = keepPinned && PreferencesStore.shared.keepPinned
+        items = shouldKeep ? items.filter { $0.isPinned } : []
         persist()
         notify()
     }
@@ -68,10 +68,14 @@ final class ClipboardRepository {
     }
 
     private func trim() {
-        let pinned = items.filter { $0.isPinned }
-        let unpinned = items.filter { !$0.isPinned }
-        let trimmedUnpinned = Array(unpinned.prefix(max(0, maxItems - pinned.count)))
-        items = pinned + trimmedUnpinned
+        let limit = PreferencesStore.shared.maxHistory
+        if PreferencesStore.shared.keepPinned {
+            let pinned = items.filter { $0.isPinned }
+            let unpinned = items.filter { !$0.isPinned }
+            items = pinned + Array(unpinned.prefix(max(0, limit - pinned.count)))
+        } else {
+            items = Array(items.prefix(limit))
+        }
     }
 
     private func persist() {

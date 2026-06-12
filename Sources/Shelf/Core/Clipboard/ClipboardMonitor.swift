@@ -43,11 +43,15 @@ final class ClipboardMonitor {
 
     private func capture() {
         let types = Set(pasteboard.types ?? [])
-        guard !types.contains(Self.concealedType), !types.contains(Self.transientType) else { return }
+        if PreferencesStore.shared.ignorePasswords {
+            guard !types.contains(Self.concealedType), !types.contains(Self.transientType) else { return }
+        }
 
         let source = NSWorkspace.shared.frontmostApplication
         let bundleId = source?.bundleIdentifier
         let appName = source?.localizedName
+
+        if let bundleId, PreferencesStore.shared.ignoredBundleIds.contains(bundleId) { return }
 
         if let fileURLs = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL], let first = fileURLs.first, first.isFileURL {
             let hash = ClipboardItem.sha256(first.absoluteString)
@@ -59,6 +63,7 @@ final class ClipboardMonitor {
 
         if let images = pasteboard.readObjects(forClasses: [NSImage.self]) as? [NSImage], let img = images.first,
            let tiff = img.tiffRepresentation {
+            guard PreferencesStore.shared.storeImages else { return }
             let hash = ClipboardItem.sha256(tiff)
             let filename = "\(hash).png"
             if imageStore.save(tiff: tiff, filename: filename) {
