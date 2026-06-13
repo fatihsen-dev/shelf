@@ -4,8 +4,11 @@ final class ClipboardRepository {
     static let didChangeNotification = Notification.Name("ClipboardRepositoryDidChange")
 
     private let storage: StorageManager
+    private let imageStore = ImageStore()
     private(set) var items: [ClipboardItem] = []
     private let queue = DispatchQueue(label: "shelf.repository", qos: .userInitiated)
+    private var persistWorkItem: DispatchWorkItem?
+    private let persistDebounce: TimeInterval = 0.4
 
     init(storage: StorageManager) {
         self.storage = storage
@@ -19,33 +22,44 @@ final class ClipboardRepository {
         if let existingIndex = items.firstIndex(where: { $0.hash == item.hash }) {
             let existing = items.remove(at: existingIndex)
             items.insert(existing, at: 0)
-            persist()
+            schedulePersist()
             notify()
             return
         }
         items.insert(item, at: 0)
-        trim()
-        persist()
+        let dropped = trim()
+        cleanupOrphanedImages(in: dropped)
+        schedulePersist()
         notify()
     }
 
     func delete(_ id: UUID) {
-        items.removeAll { $0.id == id }
-        persist()
+        guard let idx = items.firstIndex(where: { $0.id == id }) else { return }
+        let removed = items.remove(at: idx)
+        cleanupOrphanedImages(in: [removed])
+        schedulePersist()
         notify()
     }
 
     func togglePin(_ id: UUID) {
         guard let idx = items.firstIndex(where: { $0.id == id }) else { return }
         items[idx].isPinned.toggle()
-        persist()
+        schedulePersist()
         notify()
     }
 
     func clearAll(keepPinned: Bool = true) {
         let shouldKeep = keepPinned && PreferencesStore.shared.keepPinned
-        items = shouldKeep ? items.filter { $0.isPinned } : []
-        persist()
+        let removed: [ClipboardItem]
+        if shouldKeep {
+            removed = items.filter { !$0.isPinned }
+            items = items.filter { $0.isPinned }
+        } else {
+            removed = items
+            items = []
+        }
+        cleanupOrphanedImages(in: removed)
+        schedulePersist()
         notify()
     }
 
@@ -67,22 +81,47 @@ final class ClipboardRepository {
         }
     }
 
-    private func trim() {
+    @discardableResult
+    private func trim() -> [ClipboardItem] {
         let limit = PreferencesStore.shared.maxHistory
+        let kept: [ClipboardItem]
         if PreferencesStore.shared.keepPinned {
             let pinned = items.filter { $0.isPinned }
             let unpinned = items.filter { !$0.isPinned }
-            items = pinned + Array(unpinned.prefix(max(0, limit - pinned.count)))
+            kept = pinned + Array(unpinned.prefix(max(0, limit - pinned.count)))
         } else {
-            items = Array(items.prefix(limit))
+            kept = Array(items.prefix(limit))
+        }
+        let keptIds = Set(kept.map(\.id))
+        let dropped = items.filter { !keptIds.contains($0.id) }
+        items = kept
+        return dropped
+    }
+
+    private func cleanupOrphanedImages(in removed: [ClipboardItem]) {
+        let stillReferenced = Set(items.compactMap { $0.imageFilename })
+        for item in removed where item.type == .image {
+            guard let filename = item.imageFilename,
+                  !stillReferenced.contains(filename) else { continue }
+            imageStore.delete(filename: filename)
         }
     }
 
-    private func persist() {
+    private func schedulePersist() {
+        persistWorkItem?.cancel()
         let snapshot = items
-        queue.async { [weak self] in
+        let work = DispatchWorkItem { [weak self] in
             self?.storage.saveAll(snapshot)
         }
+        persistWorkItem = work
+        queue.asyncAfter(deadline: .now() + persistDebounce, execute: work)
+    }
+
+    func flushPendingWrites() {
+        persistWorkItem?.cancel()
+        persistWorkItem = nil
+        let snapshot = items
+        queue.sync { storage.saveAll(snapshot) }
     }
 
     private func notify() {

@@ -18,7 +18,7 @@ final class FooterView: NSView {
         addSubview(topBorder)
 
         let hints: [(keys: [String], label: String)] = [
-            (["←", "→"], "Navigate"),
+            (["⇥", "/", "←", "→"], "Navigate"),
             (["↵"], "Copy & paste"),
             (["⌘", "⌫"], "Delete"),
         ]
@@ -37,7 +37,6 @@ final class FooterView: NSView {
         let spacer = NSView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
         stack.addArrangedSubview(spacer)
-        stack.addArrangedSubview(listeningIndicator())
 
         NSLayoutConstraint.activate([
             topBorder.topAnchor.constraint(equalTo: topAnchor),
@@ -65,9 +64,16 @@ final class FooterView: NSView {
         keyStack.spacing = 3
 
         for key in keys {
-            let kbd = FooterKbd(key: key)
-            keyStack.addArrangedSubview(kbd)
-            kbdViews.append(kbd)
+            if key == "/" {
+                let sep = NSTextField(labelWithString: "/")
+                sep.font = Theme.Font.hint
+                sep.textColor = Theme.Color.textFaint
+                keyStack.addArrangedSubview(sep)
+            } else {
+                let kbd = FooterKbd(key: key)
+                keyStack.addArrangedSubview(kbd)
+                kbdViews.append(kbd)
+            }
         }
 
         let lbl = NSTextField(labelWithString: label)
@@ -76,39 +82,6 @@ final class FooterView: NSView {
 
         container.addArrangedSubview(keyStack)
         container.addArrangedSubview(lbl)
-        return container
-    }
-
-    private func listeningIndicator() -> NSView {
-        let inner = NSStackView()
-        inner.orientation = .horizontal
-        inner.spacing = 5
-        inner.alignment = .centerY
-        inner.translatesAutoresizingMaskIntoConstraints = false
-
-        let dot = NSView()
-        dot.wantsLayer = true
-        dot.layer?.cornerRadius = 3
-        dot.layer?.backgroundColor = Theme.Color.accent.cgColor
-        dot.translatesAutoresizingMaskIntoConstraints = false
-        dot.widthAnchor.constraint(equalToConstant: 6).isActive = true
-        dot.heightAnchor.constraint(equalToConstant: 6).isActive = true
-
-        let lbl = NSTextField(labelWithString: "Listening for copies")
-        lbl.font = Theme.Font.hint
-        lbl.textColor = Theme.Color.textFaint
-
-        inner.addArrangedSubview(dot)
-        inner.addArrangedSubview(lbl)
-
-        let container = NSView()
-        container.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(inner)
-        NSLayoutConstraint.activate([
-            inner.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            inner.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            inner.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
         return container
     }
 

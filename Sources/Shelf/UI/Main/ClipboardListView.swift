@@ -103,9 +103,6 @@ final class CardRailView: NSView {
             return
         }
 
-        var lastPinnedIdx = items.lastIndex(where: { $0.isPinned }) ?? -1
-        let _ = lastPinnedIdx  // used below for divider
-
         for (i, item) in items.enumerated() {
             // divider between pinned and unpinned
             if i > 0, !item.isPinned, items[i - 1].isPinned {

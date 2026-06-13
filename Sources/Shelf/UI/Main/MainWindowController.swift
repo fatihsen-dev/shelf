@@ -109,7 +109,7 @@ final class MainWindowController: NSObject {
         let target = previousApp
         previousApp = nil
         target?.activate(options: .activateIgnoringOtherApps)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
             self.pasteService.paste(item)
         }
     }

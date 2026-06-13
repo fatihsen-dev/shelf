@@ -31,13 +31,25 @@ final class PasteService {
     }
 
     private func simulatePasteKeystroke() {
-        let src = CGEventSource(stateID: .combinedSessionState)
-        let down = CGEvent(keyboardEventSource: src, virtualKey: CGKeyCode(kVK_ANSI_V), keyDown: true)
-        let up = CGEvent(keyboardEventSource: src, virtualKey: CGKeyCode(kVK_ANSI_V), keyDown: false)
+        guard AXIsProcessTrusted() else {
+            NSLog("[Shelf] Paste skipped: accessibility permission not granted")
+            return
+        }
+
+        let source = CGEventSource(stateID: .combinedSessionState)
+        // Suppress local key events during the synthesized paste so a user-held
+        // modifier (e.g. ⌘ from the hotkey) doesn't combine with the injected ⌘V.
+        source?.setLocalEventsFilterDuringSuppressionState(
+            [.permitLocalMouseEvents, .permitSystemDefinedEvents],
+            state: .eventSuppressionStateSuppressionInterval
+        )
+
+        let vKey = CGKeyCode(kVK_ANSI_V)
+        let down = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true)
+        let up   = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false)
         down?.flags = .maskCommand
-        up?.flags = .maskCommand
-        let loc = CGEventTapLocation.cghidEventTap
-        down?.post(tap: loc)
-        up?.post(tap: loc)
+        up?.flags   = .maskCommand
+        down?.post(tap: .cgSessionEventTap)
+        up?.post(tap: .cgSessionEventTap)
     }
 }

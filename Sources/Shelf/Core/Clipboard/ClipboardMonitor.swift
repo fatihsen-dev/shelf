@@ -10,6 +10,7 @@ final class ClipboardMonitor {
 
     private let pollInterval: TimeInterval = 0.3
     private let imageStore = ImageStore()
+    private let processingQueue = DispatchQueue(label: "shelf.clipboard.capture", qos: .userInitiated)
 
     private static let concealedType = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
     private static let transientType = NSPasteboard.PasteboardType("org.nspasteboard.TransientType")
@@ -42,6 +43,9 @@ final class ClipboardMonitor {
     }
 
     private func capture() {
+        // Read everything we need from the pasteboard on the main thread —
+        // NSPasteboard is not safe to touch off-thread — then hand the heavy
+        // work (TIFF→PNG, hashing, disk write) to a background queue.
         let types = Set(pasteboard.types ?? [])
         if PreferencesStore.shared.ignorePasswords {
             guard !types.contains(Self.concealedType), !types.contains(Self.transientType) else { return }
@@ -53,34 +57,51 @@ final class ClipboardMonitor {
 
         if let bundleId, PreferencesStore.shared.ignoredBundleIds.contains(bundleId) { return }
 
-        if let fileURLs = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL], let first = fileURLs.first, first.isFileURL {
+        if let fileURLs = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL],
+           let first = fileURLs.first, first.isFileURL {
             let hash = ClipboardItem.sha256(first.absoluteString)
             let item = ClipboardItem(type: .file, fileURLString: first.absoluteString, hash: hash,
                                      sourceBundleId: bundleId, sourceAppName: appName)
-            onCapture?(item)
+            emit(item)
             return
         }
 
-        if let images = pasteboard.readObjects(forClasses: [NSImage.self]) as? [NSImage], let img = images.first,
+        if let images = pasteboard.readObjects(forClasses: [NSImage.self]) as? [NSImage],
+           let img = images.first,
            let tiff = img.tiffRepresentation {
             guard PreferencesStore.shared.storeImages else { return }
-            let hash = ClipboardItem.sha256(tiff)
-            let filename = "\(hash).png"
-            if imageStore.save(tiff: tiff, filename: filename) {
+            processingQueue.async { [weak self] in
+                guard let self else { return }
+                let hash = ClipboardItem.sha256(tiff)
+                let filename = "\(hash).png"
+                guard self.imageStore.save(tiff: tiff, filename: filename) else { return }
                 let item = ClipboardItem(type: .image, imageFilename: filename, hash: hash,
                                          sourceBundleId: bundleId, sourceAppName: appName)
-                onCapture?(item)
+                self.emit(item)
             }
             return
         }
 
         if let text = pasteboard.string(forType: .string), !text.isEmpty {
-            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            let type: ClipboardType = Self.inferType(trimmed)
-            let hash = ClipboardItem.sha256(text)
-            let item = ClipboardItem(type: type, textValue: text, hash: hash,
-                                     sourceBundleId: bundleId, sourceAppName: appName)
+            processingQueue.async { [weak self] in
+                guard let self else { return }
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                let type: ClipboardType = Self.inferType(trimmed)
+                let hash = ClipboardItem.sha256(text)
+                let item = ClipboardItem(type: type, textValue: text, hash: hash,
+                                         sourceBundleId: bundleId, sourceAppName: appName)
+                self.emit(item)
+            }
+        }
+    }
+
+    private func emit(_ item: ClipboardItem) {
+        if Thread.isMainThread {
             onCapture?(item)
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.onCapture?(item)
+            }
         }
     }
 
@@ -92,6 +113,9 @@ final class ClipboardMonitor {
 
     private static func isLikelyURL(_ text: String) -> Bool {
         guard text.count < 2048, !text.contains(" "), !text.contains("\n") else { return false }
+        // Require an explicit scheme so we don't tag random tokens like "foo.bar" as links.
+        let lower = text.lowercased()
+        guard lower.hasPrefix("http://") || lower.hasPrefix("https://") || lower.hasPrefix("ftp://") else { return false }
         let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
         let range = NSRange(text.startIndex..., in: text)
         return detector?.firstMatch(in: text, options: [], range: range)?.range == range
