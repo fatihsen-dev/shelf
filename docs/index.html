@@ -45,7 +45,15 @@
             </div>
             <div class="install-block">
                 <div class="label">Or install via Homebrew</div>
-                <code>brew tap fatihsen-dev/shelf &amp;&amp; brew install --cask shelf</code>
+                <div class="terminal">
+                    <button class="copy-btn" type="button" aria-label="Copy command">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        <span class="copy-text">Copy</span>
+                    </button>
+                    <pre><code data-copy="brew tap fatihsen-dev/shelf
+brew install --cask shelf"><span class="prompt">$</span> <span class="cmd">brew</span> tap <span class="arg">fatihsen-dev/shelf</span>
+<span class="prompt">$</span> <span class="cmd">brew</span> install <span class="flag">--cask</span> <span class="arg">shelf</span></code></pre>
+                </div>
             </div>
         </div>
     </header>
@@ -74,7 +82,7 @@
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12V7a7 7 0 0 1 14 0v5"/><rect x="3" y="12" width="18" height="9" rx="2"/></svg>
                     </div>
                     <h3>Global hotkey</h3>
-                    <p>Press ⌘⇧V from anywhere to open the picker right at your cursor.</p>
+                    <p>Press ⌥V from anywhere to summon the picker at the bottom of your screen.</p>
                 </div>
                 <div class="feature">
                     <div class="feature-icon">
@@ -162,5 +170,27 @@
             <div>© 2026 Fatih Sen — MIT License</div>
         </div>
     </footer>
+
+    <script>
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const code = btn.parentElement.querySelector('code');
+                const text = code.dataset.copy || code.innerText;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    const label = btn.querySelector('.copy-text');
+                    const original = label.textContent;
+                    label.textContent = 'Copied';
+                    btn.classList.add('copied');
+                    setTimeout(() => {
+                        label.textContent = original;
+                        btn.classList.remove('copied');
+                    }, 1600);
+                } catch (e) {
+                    console.error('Copy failed', e);
+                }
+            });
+        });
+    </script>
 </body>
 </html>

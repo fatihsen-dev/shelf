@@ -23,7 +23,7 @@ Built with Swift Package Manager and pure AppKit. No Electron, no SwiftUI runtim
 ## Features
 
 - **Universal clipboard history** — text, links, colors, images, and files
-- **Global hotkey** — `⌘⇧V` opens the picker at your cursor
+- **Global hotkey** — `⌥V` summons the picker at the bottom of the screen
 - **Paste-to-frontmost** — selected item is pasted into the active application via `CGEvent`
 - **Persistent storage** — history survives restarts (`~/Library/Application Support/Shelf/`)
 - **Menu bar access** — quick view of recent items without opening the main window
@@ -55,7 +55,7 @@ This is required for the global hotkey and the paste-to-frontmost-app feature. S
 
 | Action | Shortcut |
 |--------|----------|
-| Open clipboard picker | `⌘⇧V` |
+| Open clipboard picker | `⌥V` |
 | Paste selected item | `↵` |
 | Close picker | `esc` |
 | Search | start typing |
