@@ -8,7 +8,7 @@ cask "shelf" do
   homepage "https://github.com/fatihsen-dev/shelf"
 
   auto_updates false
-  depends_on macos: ">= :ventura"
+  depends_on macos: :ventura
 
   app "Shelf.app"
 
