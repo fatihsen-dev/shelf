@@ -176,66 +176,72 @@ a { color: inherit; text-decoration: none; }
 
 .terminal {
     position: relative;
-    background: #16151a;
-    border: 1px solid var(--border);
+    background: #161520;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-md);
     overflow: hidden;
     text-align: left;
-}
-
-@media (prefers-color-scheme: light) {
-    .terminal { background: #1c1b21; border-color: rgba(0, 0, 0, 0.15); }
+    box-shadow: 0 12px 28px -16px rgba(0, 0, 0, 0.55);
 }
 
 .terminal pre {
     margin: 0;
-    padding: 18px 20px;
+    padding: 20px 56px 20px 22px;
     overflow-x: auto;
     font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Monaco, monospace;
     font-size: 13.5px;
-    line-height: 1.7;
-    color: #e3e2e7;
+    line-height: 1.85;
+    color: #e6e4ec;
+    background: transparent;
 }
 
-.terminal code { font-family: inherit; }
+.terminal code {
+    font-family: inherit;
+    background: transparent;
+    color: inherit;
+}
 
-.terminal .prompt { color: #6b6973; user-select: none; margin-right: 8px; }
-.terminal .cmd { color: #e5484d; font-weight: 600; }
-.terminal .flag { color: #f5b76b; }
-.terminal .arg { color: #7dd3a0; }
+.terminal .tk-prompt { color: #5b596b; user-select: none; }
+.terminal .tk-cmd    { color: #e5484d; font-weight: 600; }
+.terminal .tk-sub    { color: #c8c6d8; }
+.terminal .tk-flag   { color: #f1c069; }
+.terminal .tk-arg    { color: #7dd3a0; }
 
 .copy-btn {
     position: absolute;
     top: 10px;
     right: 10px;
+    width: 32px;
+    height: 32px;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    background: rgba(255, 255, 255, 0.06);
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
-    color: #c8c6d0;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-    font-size: 12px;
-    font-weight: 500;
+    color: #a5a3b5;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    padding: 0;
 }
 
 .copy-btn:hover {
     background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.16);
     color: #fff;
 }
 
-.copy-btn.copied {
-    background: var(--accent-soft);
-    border-color: var(--accent-ring);
-    color: var(--accent);
-}
+.copy-btn:active { transform: scale(0.94); }
 
-.copy-btn svg { opacity: 0.85; }
+.copy-btn .icon-check { display: none; }
+.copy-btn.copied .icon-copy { display: none; }
+.copy-btn.copied .icon-check { display: block; }
+
+.copy-btn.copied {
+    background: rgba(125, 211, 160, 0.18);
+    border-color: rgba(125, 211, 160, 0.4);
+    color: #7dd3a0;
+}
 
 /* Sections */
 .section {
