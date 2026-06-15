@@ -9,6 +9,7 @@ MACOS="$CONTENTS/MacOS"
 RES="$CONTENTS/Resources"
 
 cd "$ROOT"
+swift package clean
 swift build -c debug
 
 BIN_PATH="$(swift build -c debug --show-bin-path)/Shelf"

@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var mainController = MainWindowController(repository: repository)
     private lazy var settingsController = SettingsWindowController()
     private lazy var hotkey = GlobalHotkeyManager()
+    private var onboardingController: OnboardingWindowController?
 
     override init() {
         let storage = StorageManager()
@@ -23,7 +24,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         repository.load()
         menubar.install()
-        requestAccessibilityIfNeeded()
+        if preferences.hasSeenOnboarding {
+            requestAccessibilityIfNeeded()
+        } else {
+            showOnboarding()
+        }
         monitor.onCapture = { [weak self] item in
             self?.repository.insert(item)
             if PreferencesStore.shared.playSoundOnCopy {
@@ -132,5 +137,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !AXIsProcessTrusted() else { return }
         let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
         AXIsProcessTrustedWithOptions(options)
+    }
+
+    private func showOnboarding() {
+        let controller = OnboardingWindowController()
+        onboardingController = controller
+        controller.present { [weak self] in
+            self?.onboardingController = nil
+            self?.requestAccessibilityIfNeeded()
+        }
     }
 }

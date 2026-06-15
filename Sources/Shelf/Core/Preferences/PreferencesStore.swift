@@ -20,6 +20,12 @@ final class PreferencesStore {
         static let maxHistory = "maxHistory"
         static let theme = "theme" // auto / light / dark
         static let pauseMonitoring = "pauseMonitoring"
+        static let hasSeenOnboarding = "hasSeenOnboarding"
+    }
+
+    var hasSeenOnboarding: Bool {
+        get { defaults.bool(forKey: Keys.hasSeenOnboarding) }
+        set { defaults.set(newValue, forKey: Keys.hasSeenOnboarding) }
     }
 
     var hotkeyKeyCode: UInt32 {
