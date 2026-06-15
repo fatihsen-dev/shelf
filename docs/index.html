@@ -119,28 +119,28 @@ brew install --cask shelf"><span class="prompt">$</span> <span class="cmd">brew<
                         <h3>Your full copy history</h3>
                         <p>Every item you've copied — text, links, colors, images, files — lined up in a horizontal shelf, ready to recall.</p>
                     </div>
-                    <div class="shot-image"><img src="screenshots/01-history.png" alt="Clipboard history view" loading="lazy" /></div>
+                    <div class="shot-image"><div class="shot-frame"><img src="screenshots/01-history.png" alt="Clipboard history view" loading="lazy" /></div></div>
                 </div>
                 <div class="shot">
                     <div class="shot-text">
                         <h3>Search that just works</h3>
                         <p>Start typing — results filter instantly across your entire history. No indexing delay, no waiting.</p>
                     </div>
-                    <div class="shot-image"><img src="screenshots/02-search.png" alt="Instant search" loading="lazy" /></div>
+                    <div class="shot-image"><div class="shot-frame"><img src="screenshots/02-search.png" alt="Instant search" loading="lazy" /></div></div>
                 </div>
                 <div class="shot">
                     <div class="shot-text">
                         <h3>Tune it to your workflow</h3>
                         <p>Customizable hotkeys, themes, history size, and more — Shelf adapts to how you work.</p>
                     </div>
-                    <div class="shot-image"><img src="screenshots/03-settings.png" alt="Settings window" loading="lazy" /></div>
+                    <div class="shot-image"><div class="shot-frame"><img src="screenshots/03-settings.png" alt="Settings window" loading="lazy" /></div></div>
                 </div>
                 <div class="shot">
                     <div class="shot-text">
                         <h3>Always one click away</h3>
                         <p>The menu bar icon shows your most recent items at a glance — no need to open the main window.</p>
                     </div>
-                    <div class="shot-image"><img src="screenshots/04-menubar.png" alt="Menu bar dropdown" loading="lazy" /></div>
+                    <div class="shot-image"><div class="shot-frame"><img src="screenshots/04-menubar.png" alt="Menu bar dropdown" loading="lazy" /></div></div>
                 </div>
             </div>
         </div>
@@ -172,6 +172,27 @@ brew install --cask shelf"><span class="prompt">$</span> <span class="cmd">brew<
     </footer>
 
     <script>
+        document.querySelectorAll('.shot-frame').forEach(frame => {
+            const img = frame.querySelector('img');
+            let baseRect = null;
+            frame.addEventListener('mouseenter', () => {
+                baseRect = frame.getBoundingClientRect();
+                frame.classList.add('zooming');
+            });
+            frame.addEventListener('mousemove', (e) => {
+                if (!baseRect) return;
+                let x = ((e.clientX - baseRect.left) / baseRect.width) * 100;
+                let y = ((e.clientY - baseRect.top) / baseRect.height) * 100;
+                x = Math.max(0, Math.min(100, x));
+                y = Math.max(0, Math.min(100, y));
+                img.style.transformOrigin = `${x}% ${y}%`;
+            });
+            frame.addEventListener('mouseleave', () => {
+                frame.classList.remove('zooming');
+                baseRect = null;
+            });
+        });
+
         document.querySelectorAll('.copy-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const code = btn.parentElement.querySelector('code');

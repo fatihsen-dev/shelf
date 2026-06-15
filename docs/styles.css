@@ -345,12 +345,30 @@ a { color: inherit; text-decoration: none; }
     justify-content: center;
 }
 
-.shot-image img {
+.shot-frame {
+    position: relative;
     width: 100%;
-    max-width: 100%;
+    overflow: hidden;
     border-radius: var(--radius-md);
     box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.4);
     border: 1px solid var(--border);
+    aspect-ratio: 2560 / 1600;
+}
+
+.shot-frame img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.18s ease-out;
+    will-change: transform;
+    transform-origin: center center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .shot-frame { cursor: zoom-in; }
+    .shot-frame.zooming img { transform: scale(2.4); transition: transform 0.05s linear; }
 }
 
 /* Privacy callout */
