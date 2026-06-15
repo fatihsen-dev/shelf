@@ -6,6 +6,7 @@
   <p>A native clipboard manager for macOS. Fast, lightweight, and built with pure AppKit.</p>
 
   <p>
+    <a href="https://shelf.fatihsen.dev"><img src="https://img.shields.io/badge/website-shelf.fatihsen.dev-e5484d?style=flat-square" alt="Website" /></a>
     <a href="https://github.com/fatihsen-dev/shelf/releases"><img src="https://img.shields.io/github/v/release/fatihsen-dev/shelf?style=flat-square" alt="Latest release" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/github/license/fatihsen-dev/shelf?style=flat-square" alt="License" /></a>
     <img src="https://img.shields.io/badge/macOS-13.0+-blue?style=flat-square" alt="macOS 13+" />
@@ -19,6 +20,19 @@
 Shelf keeps a searchable history of everything you copy — text, links, colors, images, and files. It lives in the menu bar, opens with a global hotkey, and pastes back into the frontmost app with a single keystroke.
 
 Built with Swift Package Manager and pure AppKit. No Electron, no SwiftUI runtime, no third-party dependencies.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="assets/screenshots/01-history.png" alt="Clipboard history" /></td>
+    <td><img src="assets/screenshots/02-search.png" alt="Instant search" /></td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/03-settings.png" alt="Settings window" /></td>
+    <td><img src="assets/screenshots/04-menubar.png" alt="Menu bar dropdown" /></td>
+  </tr>
+</table>
 
 ## Features
 
@@ -76,6 +90,7 @@ Sources/Shelf/
 │   ├── Common/      Theme, blur background, search field
 │   ├── Main/        Frameless floating panel
 │   ├── Menubar/     NSStatusItem controller
+│   ├── Onboarding/  First-launch welcome window
 │   └── Settings/    Preferences window
 ├── Services/        Paste simulation via CGEvent
 └── Resources/       Info.plist and entitlements
