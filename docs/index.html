@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shelf — A native clipboard manager for macOS</title>
+    <meta name="description" content="Shelf is a fast, native clipboard manager for macOS. Search your entire copy history, pin favorites, and paste with a single keystroke." />
+    <meta name="theme-color" content="#0e0d12" />
+    <link rel="icon" type="image/png" href="logo.png" />
+    <link rel="apple-touch-icon" href="logo.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <meta property="og:title" content="Shelf — A native clipboard manager for macOS" />
+    <meta property="og:description" content="Search your entire copy history, pin favorites, and paste with a single keystroke." />
+    <meta property="og:image" content="https://shelf.fatihsen.dev/screenshots/01-history.png" />
+    <meta property="og:url" content="https://shelf.fatihsen.dev/" />
+    <meta name="twitter:card" content="summary_large_image" />
+</head>
+<body>
+    <nav class="nav">
+        <div class="container nav-inner">
+            <a class="nav-brand" href="/">
+                <img src="logo.png" alt="" />
+                Shelf
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#screenshots">Screenshots</a>
+                <a href="https://github.com/fatihsen-dev/shelf">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="container">
+            <img src="logo.png" alt="Shelf logo" class="hero-logo" />
+            <h1>Your clipboard, organized.</h1>
+            <p class="tagline">A fast, native clipboard manager for macOS. Search your entire copy history, pin favorites, and paste with a single keystroke.</p>
+            <div class="cta-row">
+                <a class="cta" href="https://github.com/fatihsen-dev/shelf/releases/latest">
+                    Download for macOS
+                </a>
+                <a class="cta-secondary" href="https://github.com/fatihsen-dev/shelf">
+                    View on GitHub
+                </a>
+            </div>
+            <div class="install-block">
+                <div class="label">Or install via Homebrew</div>
+                <code>brew tap fatihsen-dev/shelf &amp;&amp; brew install --cask shelf</code>
+            </div>
+        </div>
+    </header>
+
+    <section class="section" id="features">
+        <div class="container">
+            <h2 class="section-title">Built for speed.</h2>
+            <p class="section-subtitle">Pure AppKit. No Electron, no SwiftUI runtime, no third-party dependencies.</p>
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    </div>
+                    <h3>Instant search</h3>
+                    <p>Incremental filtering across your entire history. Find anything in milliseconds.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M6 12h.01M6 16h.01"/></svg>
+                    </div>
+                    <h3>Universal types</h3>
+                    <p>Text, links, colors, images, and files — Shelf captures everything you copy.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12V7a7 7 0 0 1 14 0v5"/><rect x="3" y="12" width="18" height="9" rx="2"/></svg>
+                    </div>
+                    <h3>Global hotkey</h3>
+                    <p>Press ⌘⇧V from anywhere to open the picker right at your cursor.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 9 9l-7 1 5 5-1 7 6-3 6 3-1-7 5-5-7-1z"/></svg>
+                    </div>
+                    <h3>Pin favorites</h3>
+                    <p>Keep snippets you use often at the top — pinned items never expire.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg>
+                    </div>
+                    <h3>Menu bar access</h3>
+                    <p>Quick previews of recent items without opening the full picker.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <h3>Local-only</h3>
+                    <p>Everything stays on your Mac. No cloud, no analytics, no account.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="screenshots">
+        <div class="container">
+            <h2 class="section-title">See it in action.</h2>
+            <p class="section-subtitle">Designed to feel native on macOS — fast, quiet, and out of your way.</p>
+            <div class="shots">
+                <div class="shot">
+                    <div class="shot-text">
+                        <h3>Your full copy history</h3>
+                        <p>Every item you've copied — text, links, colors, images, files — lined up in a horizontal shelf, ready to recall.</p>
+                    </div>
+                    <div class="shot-image"><img src="screenshots/01-history.png" alt="Clipboard history view" loading="lazy" /></div>
+                </div>
+                <div class="shot">
+                    <div class="shot-text">
+                        <h3>Search that just works</h3>
+                        <p>Start typing — results filter instantly across your entire history. No indexing delay, no waiting.</p>
+                    </div>
+                    <div class="shot-image"><img src="screenshots/02-search.png" alt="Instant search" loading="lazy" /></div>
+                </div>
+                <div class="shot">
+                    <div class="shot-text">
+                        <h3>Tune it to your workflow</h3>
+                        <p>Customizable hotkeys, themes, history size, and more — Shelf adapts to how you work.</p>
+                    </div>
+                    <div class="shot-image"><img src="screenshots/03-settings.png" alt="Settings window" loading="lazy" /></div>
+                </div>
+                <div class="shot">
+                    <div class="shot-text">
+                        <h3>Always one click away</h3>
+                        <p>The menu bar icon shows your most recent items at a glance — no need to open the main window.</p>
+                    </div>
+                    <div class="shot-image"><img src="screenshots/04-menubar.png" alt="Menu bar dropdown" loading="lazy" /></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container">
+            <div class="privacy">
+                <div class="icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <h2>Your clipboard, your data.</h2>
+                <p>Shelf stores your clipboard history exclusively on your Mac. Nothing is sent to remote servers. There is no analytics, no telemetry, and no account system.</p>
+                <a href="privacy-policy">Read the privacy policy →</a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="links">
+                <a href="https://github.com/fatihsen-dev/shelf">GitHub</a>
+                <a href="https://github.com/fatihsen-dev/shelf/releases">Releases</a>
+                <a href="privacy-policy">Privacy</a>
+                <a href="https://github.com/fatihsen-dev/shelf/issues">Report an issue</a>
+            </div>
+            <div>© 2026 Fatih Sen — MIT License</div>
+        </div>
+    </footer>
+</body>
+</html>
