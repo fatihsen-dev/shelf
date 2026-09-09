@@ -23,7 +23,9 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
 
     func present(onFinish: @escaping () -> Void) {
         self.onFinish = onFinish
-        launchToggle.state = .on
+        // Opt-in, never pre-checked: App Store guideline 2.4.5(iii) forbids
+        // registering a login item the user did not actively ask for.
+        launchToggle.state = .off
         NSApp.activate(ignoringOtherApps: true)
         showWindow(nil)
     }
@@ -61,7 +63,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         toggleLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
         toggleLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        let toggleHint = NSTextField(wrappingLabelWithString: "Shelf opens automatically when you log in to your Mac.")
+        let toggleHint = NSTextField(wrappingLabelWithString: "Optional. Turn this on and Shelf opens when you log in to your Mac.")
         toggleHint.font = NSFont.systemFont(ofSize: 11.5, weight: .regular)
         toggleHint.textColor = .secondaryLabelColor
         toggleHint.translatesAutoresizingMaskIntoConstraints = false
@@ -130,9 +132,13 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     }
 
     @objc private func finish() {
-        preferences.launchAtLogin = (launchToggle.state == .on)
+        let wantsLaunchAtLogin = (launchToggle.state == .on)
         preferences.hasSeenOnboarding = true
-        NotificationCenter.default.post(name: .shelfLaunchAtLogin, object: nil)
+        // Only touch the login item when the user actually switched it on.
+        if wantsLaunchAtLogin {
+            preferences.launchAtLogin = true
+            NotificationCenter.default.post(name: .shelfLaunchAtLogin, object: nil)
+        }
         window?.close()
         onFinish?()
     }

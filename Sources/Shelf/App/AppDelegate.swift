@@ -16,8 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var onboardingController: OnboardingWindowController?
 
     override init() {
-        let storage = StorageManager()
-        self.repository = ClipboardRepository(storage: storage)
+        self.repository = ClipboardRepository(storage: .shared)
         super.init()
     }
 
@@ -37,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         monitor.start()
         applyTheme()
-        applyLaunchAtLogin(preferences.launchAtLogin)
+        syncLaunchAtLoginFromSystem()
         hotkey.register(keyCode: preferences.hotkeyKeyCode,
                         modifiers: preferences.hotkeyModifiers) { [weak self] in
             self?.mainController.toggle()
@@ -109,7 +108,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         applyLaunchAtLogin(preferences.launchAtLogin)
     }
 
+    /// The system is the source of truth: the user can add or remove the login
+    /// item in System Settings, and launching must never override that choice.
+    private func syncLaunchAtLoginFromSystem() {
+        preferences.launchAtLogin = Self.isRegisteredAtLogin
+    }
+
+    private static var isRegisteredAtLogin: Bool {
+        switch SMAppService.mainApp.status {
+        case .enabled, .requiresApproval: return true
+        default: return false
+        }
+    }
+
+    /// Called only in response to the user flipping the toggle.
     private func applyLaunchAtLogin(_ enabled: Bool) {
+        guard Self.isRegisteredAtLogin != enabled else { return }
         do {
             if enabled {
                 try SMAppService.mainApp.register()
@@ -117,7 +131,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 try SMAppService.mainApp.unregister()
             }
         } catch {
-            // Silently fail in dev builds without proper bundle config
+            // Keep the stored preference honest if the system refused the change.
+            NSLog("[Shelf] Launch at login change failed: \(error.localizedDescription)")
+            preferences.launchAtLogin = Self.isRegisteredAtLogin
         }
     }
 
