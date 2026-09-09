@@ -1,10 +1,15 @@
 import Foundation
 import AppKit
+import ImageIO
 import os
 
 private let log = Logger(subsystem: "app.shelf", category: "storage")
 
 final class StorageManager {
+    /// Shared instance — init touches the filesystem (createDirectory), so avoid
+    /// spinning up a new one per view/service.
+    static let shared = StorageManager()
+
     let baseURL: URL
     let databaseURL: URL
     let imagesURL: URL
@@ -55,13 +60,30 @@ final class StorageManager {
 }
 
 final class ImageStore {
-    private let storage = StorageManager()
+    static let shared = ImageStore()
 
-    func save(tiff: Data, filename: String) -> Bool {
+    private let storage = StorageManager.shared
+    private static let thumbnailCache: NSCache<NSString, NSImage> = {
+        let c = NSCache<NSString, NSImage>()
+        c.countLimit = 80
+        return c
+    }()
+
+    private static let pngMagic: [UInt8] = [0x89, 0x50, 0x4E, 0x47]
+
+    /// Accepts TIFF or PNG bytes straight off the pasteboard. PNG is written as-is;
+    /// anything else is converted once, on the caller's background queue.
+    func save(imageData: Data, filename: String) -> Bool {
         let url = storage.imagesURL.appendingPathComponent(filename)
         guard !FileManager.default.fileExists(atPath: url.path) else { return true }
-        guard let rep = NSBitmapImageRep(data: tiff),
-              let png = rep.representation(using: .png, properties: [:]) else { return false }
+        let png: Data
+        if imageData.count > 4, Array(imageData.prefix(4)) == Self.pngMagic {
+            png = imageData
+        } else {
+            guard let rep = NSBitmapImageRep(data: imageData),
+                  let converted = rep.representation(using: .png, properties: [:]) else { return false }
+            png = converted
+        }
         do {
             try png.write(to: url, options: .atomic)
             return true
@@ -76,8 +98,27 @@ final class ImageStore {
         return NSImage(contentsOf: url)
     }
 
+    /// Downsampled image for card previews. ImageIO decodes straight to the
+    /// requested size, so a 6000px screenshot never gets fully decoded.
+    func thumbnail(filename: String, maxPixel: Int = 512) -> NSImage? {
+        let key = "\(filename)@\(maxPixel)" as NSString
+        if let cached = Self.thumbnailCache.object(forKey: key) { return cached }
+        let url = storage.imagesURL.appendingPathComponent(filename)
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        let image = NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+        Self.thumbnailCache.setObject(image, forKey: key)
+        return image
+    }
+
     func delete(filename: String) {
         let url = storage.imagesURL.appendingPathComponent(filename)
         try? FileManager.default.removeItem(at: url)
+        Self.thumbnailCache.removeAllObjects()
     }
 }

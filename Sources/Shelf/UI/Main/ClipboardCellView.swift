@@ -8,8 +8,19 @@ final class CardView: NSView {
     var onDelete:    (() -> Void)?
     var onTogglePin: (() -> Void)?
 
-    var isCardSelected: Bool = false { didSet { updateStyle() } }
-    private var isHovering: Bool    = false { didSet { updateActionVisibility() } }
+    var isCardSelected: Bool = false {
+        didSet {
+            guard oldValue != isCardSelected else { return }
+            updateStyle()
+            updateActionVisibility()
+        }
+    }
+    private var isHovering: Bool = false {
+        didSet {
+            guard oldValue != isHovering else { return }
+            updateActionVisibility()
+        }
+    }
 
     // header
     private let appTile      = AppTileView()
@@ -20,6 +31,7 @@ final class CardView: NSView {
 
     // body placeholder
     private var bodyView: NSView?
+    private var bodyType: ClipboardType?
 
     // footer
     private let metaLabel  = NSTextField(labelWithString: "")
@@ -102,8 +114,13 @@ final class CardView: NSView {
             timeLabel.centerYAnchor.constraint(equalTo: metaLabel.centerYAnchor),
         ])
 
-        updateStyle()
+        let s = NSShadow()
+        s.shadowColor      = NSColor.black.withAlphaComponent(0.08)
+        s.shadowBlurRadius = 6
+        s.shadowOffset     = NSSize(width: 0, height: -2)
+        shadow = s
 
+        updateStyle()
     }
 
     private func configureActionButton(_ btn: NSButton, symbol: String, action: Selector) {
@@ -128,19 +145,26 @@ final class CardView: NSView {
         pinButton.image         = NSImage(systemSymbolName: pinSymbol, accessibilityDescription: nil)
         pinButton.contentTintColor = item.isPinned ? Theme.Color.accent : Theme.Color.textDim
 
-        bodyView?.removeFromSuperview()
-        let body = makeBody(for: item)
-        body.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(body)
+        // Reuse the body view when the type hasn't changed — rebuilding it means a
+        // fresh view tree plus four constraints per card, on every reload.
+        if let existing = bodyView, bodyType == item.type {
+            configureBody(existing, with: item)
+        } else {
+            bodyView?.removeFromSuperview()
+            let body = makeBody(for: item)
+            body.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(body)
 
-        let p = Theme.Spacing.l
-        NSLayoutConstraint.activate([
-            body.topAnchor.constraint(equalTo: appTile.bottomAnchor, constant: 8),
-            body.leadingAnchor.constraint(equalTo: leadingAnchor,    constant: p),
-            body.trailingAnchor.constraint(equalTo: trailingAnchor,  constant: -p),
-            body.bottomAnchor.constraint(equalTo: metaLabel.topAnchor, constant: -8),
-        ])
-        bodyView = body
+            let p = Theme.Spacing.l
+            NSLayoutConstraint.activate([
+                body.topAnchor.constraint(equalTo: appTile.bottomAnchor, constant: 8),
+                body.leadingAnchor.constraint(equalTo: leadingAnchor,    constant: p),
+                body.trailingAnchor.constraint(equalTo: trailingAnchor,  constant: -p),
+                body.bottomAnchor.constraint(equalTo: metaLabel.topAnchor, constant: -8),
+            ])
+            bodyView = body
+            bodyType = item.type
+        }
 
         metaLabel.stringValue = metaText(for: item)
         timeLabel.stringValue = relativeTime(item.createdAt)
@@ -150,11 +174,24 @@ final class CardView: NSView {
     }
 
     private func makeBody(for item: ClipboardItem) -> NSView {
+        let view: NSView
         switch item.type {
-        case .link:  let v = LinkCardBody();  v.configure(item: item); return v
-        case .image: let v = ImageCardBody(); v.configure(item: item); return v
-        case .color: let v = ColorCardBody(); v.configure(item: item); return v
-        default:     let v = TextCardBody();  v.configure(item: item); return v
+        case .link:  view = LinkCardBody()
+        case .image: view = ImageCardBody()
+        case .color: view = ColorCardBody()
+        default:     view = TextCardBody()
+        }
+        configureBody(view, with: item)
+        return view
+    }
+
+    private func configureBody(_ view: NSView, with item: ClipboardItem) {
+        switch view {
+        case let v as LinkCardBody:  v.configure(item: item)
+        case let v as ImageCardBody: v.configure(item: item)
+        case let v as ColorCardBody: v.configure(item: item)
+        case let v as TextCardBody:  v.configure(item: item)
+        default: break
         }
     }
 
@@ -166,12 +203,6 @@ final class CardView: NSView {
                 : Theme.Color.cardBorder.cgColor
         }
         layer?.borderWidth = isCardSelected ? 2 : 0.5
-
-        let s = NSShadow()
-        s.shadowColor      = NSColor.black.withAlphaComponent(0.08)
-        s.shadowBlurRadius = 6
-        s.shadowOffset     = NSSize(width: 0, height: -2)
-        shadow = s
     }
 
     private func updateActionVisibility() {
@@ -224,10 +255,14 @@ final class CardView: NSView {
         }
     }
 
-    private func relativeTime(_ date: Date) -> String {
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .abbreviated
-        return f.localizedString(for: date, relativeTo: Date())
+        return f
+    }()
+
+    private func relativeTime(_ date: Date) -> String {
+        Self.relativeFormatter.localizedString(for: date, relativeTo: Date())
     }
 }
 
@@ -265,10 +300,19 @@ final class AppTileView: NSView {
     }
     required init?(coder: NSCoder) { fatalError() }
 
+    // Bundle-id lookup + icon read hits the filesystem; cache it per app.
+    private static var iconCache: [String: NSImage?] = [:]
+
+    private static func icon(forBundleId bundleId: String) -> NSImage? {
+        if let cached = iconCache[bundleId] { return cached }
+        let icon = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId)
+            .map { NSWorkspace.shared.icon(forFile: $0.path) }
+        iconCache[bundleId] = icon
+        return icon
+    }
+
     func configure(appName: String?, bundleId: String?) {
-        if let bundleId,
-           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
-            let icon = NSWorkspace.shared.icon(forFile: appURL.path)
+        if let bundleId, let icon = Self.icon(forBundleId: bundleId) {
             iconView.image = icon
             iconView.isHidden = false
             label.isHidden = true
@@ -283,11 +327,14 @@ final class AppTileView: NSView {
     }
 
     private func tileColor(for name: String) -> NSColor {
+        // Not hashValue: that is seeded per launch (colors would change every run)
+        // and abs(Int.min) traps.
         let palette: [NSColor] = [
             NSColor(hex: "1f8bff"), NSColor(hex: "ff6a8b"), NSColor(hex: "b06bff"),
             NSColor(hex: "5b3a9e"), NSColor(hex: "ffc033"), NSColor(hex: "3a7bd5"),
             NSColor(hex: "5b6ad0"), NSColor(hex: "e5484d"), NSColor(hex: "28a745"),
         ]
-        return palette[abs(name.hashValue) % palette.count]
+        let stable = name.unicodeScalars.reduce(UInt64(5381)) { ($0 &* 33) &+ UInt64($1.value) }
+        return palette[Int(stable % UInt64(palette.count))]
     }
 }

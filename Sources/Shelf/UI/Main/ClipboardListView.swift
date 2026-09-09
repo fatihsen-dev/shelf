@@ -8,8 +8,17 @@ final class CardRailView: NSView {
 
     private let scrollView   = NSScrollView()
     private let contentStack = NSStackView()
+    /// Cards currently in the stack, index-aligned with `items[0..<renderedCount]`.
     private var cards: [CardView] = []
+    /// Detached cards kept for reuse so a reload doesn't rebuild view trees.
+    private var recycled: [CardView] = []
+    private var renderedCount = 0
     private var selectedIndex = 0
+
+    /// How many cards get built up front / per scroll batch. Only ~6 fit on screen,
+    /// so building all 500 of them on every copy is what froze the app.
+    private let pageSize = 12
+    private let recyclePoolLimit = 40
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -34,6 +43,11 @@ final class CardRailView: NSView {
         )
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.documentView = contentStack
+
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(clipBoundsChanged),
+            name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
 
         // Pin stack to clip view — leave trailing open for horizontal scroll
         let clip = scrollView.contentView
@@ -88,9 +102,10 @@ final class CardRailView: NSView {
     }()
 
     private func reload() {
-        cards.forEach { $0.removeFromSuperview() }
+        recycled.append(contentsOf: cards.prefix(max(0, recyclePoolLimit - recycled.count)))
         contentStack.arrangedSubviews.forEach { contentStack.removeArrangedSubview($0); $0.removeFromSuperview() }
         cards = []
+        renderedCount = 0
         emptyState.removeFromSuperview()
 
         if items.isEmpty {
@@ -103,17 +118,26 @@ final class CardRailView: NSView {
             return
         }
 
-        for (i, item) in items.enumerated() {
+        selectedIndex = min(selectedIndex, items.count - 1)
+        render(upTo: max(pageSize, selectedIndex + 1))
+        selectCard(at: selectedIndex, scroll: false)
+    }
+
+    /// Appends cards until `renderedCount` reaches `target`. Never rebuilds what
+    /// is already on screen.
+    private func render(upTo target: Int) {
+        let end = min(target, items.count)
+        guard end > renderedCount else { return }
+        for i in renderedCount..<end {
+            let item = items[i]
             // divider between pinned and unpinned
             if i > 0, !item.isPinned, items[i - 1].isPinned {
-                let divider = makeDivider()
-                contentStack.addArrangedSubview(divider)
+                contentStack.addArrangedSubview(makeDivider())
             }
 
-            let card = CardView()
+            let card = dequeueCard()
             card.item = item
-            card.widthAnchor.constraint(equalToConstant: Theme.Sizes.cardWidth).isActive = true
-            card.heightAnchor.constraint(equalToConstant: Theme.Sizes.cardHeight).isActive = true
+            card.isCardSelected = (i == selectedIndex)
 
             let idx = i
             card.onSelect     = { [weak self] in self?.activateCard(at: idx) }
@@ -123,9 +147,28 @@ final class CardRailView: NSView {
             contentStack.addArrangedSubview(card)
             cards.append(card)
         }
+        renderedCount = end
+        // Cards must stay index-aligned with items — dividers live in the stack but
+        // never in `cards`.
+        assert(cards.count == renderedCount, "card/item index alignment broken")
+        // Freshly added cards have no frame yet; scrollToCard reads frames.
+        contentStack.layoutSubtreeIfNeeded()
+    }
 
-        let target = min(selectedIndex, max(0, cards.count - 1))
-        selectCard(at: target, scroll: false)
+    private func dequeueCard() -> CardView {
+        if let card = recycled.popLast() { return card }
+        let card = CardView()
+        card.widthAnchor.constraint(equalToConstant: Theme.Sizes.cardWidth).isActive = true
+        card.heightAnchor.constraint(equalToConstant: Theme.Sizes.cardHeight).isActive = true
+        return card
+    }
+
+    @objc private func clipBoundsChanged() {
+        guard renderedCount < items.count else { return }
+        let visible = scrollView.documentVisibleRect
+        let threshold = contentStack.frame.width - Theme.Sizes.cardWidth * 3
+        guard visible.maxX >= threshold else { return }
+        render(upTo: renderedCount + pageSize)
     }
 
     func selectFirst() {
@@ -134,13 +177,16 @@ final class CardRailView: NSView {
     }
 
     func moveSelection(_ delta: Int) {
-        guard !cards.isEmpty else { return }
-        selectCard(at: max(0, min(cards.count - 1, selectedIndex + delta)), scroll: true)
+        guard !items.isEmpty else { return }
+        let next = max(0, min(items.count - 1, selectedIndex + delta))
+        render(upTo: next + 1)
+        selectCard(at: next, scroll: true)
     }
 
     func moveSelectionWrapping(_ delta: Int) {
-        guard !cards.isEmpty else { return }
-        let next = (selectedIndex + delta + cards.count) % cards.count
+        guard !items.isEmpty else { return }
+        let next = (selectedIndex + delta + items.count) % items.count
+        render(upTo: next + 1)
         selectCard(at: next, scroll: true)
     }
 

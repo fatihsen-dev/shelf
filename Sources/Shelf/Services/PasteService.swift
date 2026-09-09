@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 
 final class PasteService {
-    private let imageStore = ImageStore()
+    private let imageStore = ImageStore.shared
     private let pasteboard = NSPasteboard.general
 
     func paste(_ item: ClipboardItem) {

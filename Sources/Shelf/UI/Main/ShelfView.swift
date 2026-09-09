@@ -121,7 +121,12 @@ final class ShelfView: NSView {
     }
 
     @objc private func repositoryChanged() {
-        DispatchQueue.main.async { [weak self] in self?.refreshItems() }
+        DispatchQueue.main.async { [weak self] in
+            // Shelf is hidden most of the time; rebuilding the rail on every copy
+            // is wasted work. show() calls resetSearch(), which refreshes.
+            guard let self, self.window?.isVisible == true else { return }
+            self.refreshItems()
+        }
     }
 
     private func refreshItems() {

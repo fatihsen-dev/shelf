@@ -23,7 +23,10 @@ final class TextCardBody: NSView {
     required init?(coder: NSCoder) { fatalError() }
 
     func configure(item: ClipboardItem) {
-        label.stringValue = item.textValue ?? ""
+        // Only 5 lines are ever visible — laying out a multi-megabyte clipboard
+        // string in a text field hangs the main thread.
+        let text = item.textValue ?? ""
+        label.stringValue = text.count > 500 ? String(text.prefix(500)) : text
     }
 }
 
@@ -130,7 +133,9 @@ final class LinkCardBody: NSView {
 
 final class ImageCardBody: NSView {
     private let imageView = NSImageView()
-    private let imageStore = ImageStore()
+    private var currentFilename: String?
+
+    private static let loadQueue = DispatchQueue(label: "shelf.thumbnails", qos: .userInitiated)
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -153,8 +158,22 @@ final class ImageCardBody: NSView {
     required init?(coder: NSCoder) { fatalError() }
 
     func configure(item: ClipboardItem) {
-        if let filename = item.imageFilename, let img = imageStore.loadImage(filename: filename) {
-            imageView.image = img
+        guard let filename = item.imageFilename else {
+            currentFilename = nil
+            imageView.image = nil
+            return
+        }
+        guard filename != currentFilename else { return }
+        currentFilename = filename
+        imageView.image = nil
+        // Decode off the main thread — a full-size screenshot decode per card is
+        // what made opening the shelf stall.
+        Self.loadQueue.async { [weak self] in
+            let image = ImageStore.shared.thumbnail(filename: filename)
+            DispatchQueue.main.async {
+                guard let self, self.currentFilename == filename else { return }
+                self.imageView.image = image
+            }
         }
     }
 

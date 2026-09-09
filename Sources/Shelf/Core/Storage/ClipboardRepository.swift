@@ -4,7 +4,7 @@ final class ClipboardRepository {
     static let didChangeNotification = Notification.Name("ClipboardRepositoryDidChange")
 
     private let storage: StorageManager
-    private let imageStore = ImageStore()
+    private let imageStore = ImageStore.shared
     private(set) var items: [ClipboardItem] = []
     private let queue = DispatchQueue(label: "shelf.repository", qos: .userInitiated)
     private var persistWorkItem: DispatchWorkItem?
@@ -68,15 +68,16 @@ final class ClipboardRepository {
         let unpinned = items.filter { !$0.isPinned }
         let all = pinned + unpinned
         guard !query.isEmpty else { return all }
-        let lower = query.lowercased()
+        // localizedCaseInsensitiveContains avoids allocating a lowercased copy of
+        // every stored item on every keystroke.
         return all.filter { item in
             switch item.type {
             case .text, .link, .color:
-                return item.textValue?.lowercased().contains(lower) ?? false
+                return item.textValue?.localizedCaseInsensitiveContains(query) ?? false
             case .file:
-                return item.fileURLString?.lowercased().contains(lower) ?? false
+                return item.fileURLString?.localizedCaseInsensitiveContains(query) ?? false
             case .image:
-                return "image".contains(lower)
+                return "image".localizedCaseInsensitiveContains(query)
             }
         }
     }

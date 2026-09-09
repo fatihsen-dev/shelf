@@ -9,7 +9,7 @@ final class ClipboardMonitor {
     private(set) var isPaused = false
 
     private let pollInterval: TimeInterval = 0.3
-    private let imageStore = ImageStore()
+    private let imageStore = ImageStore.shared
     private let processingQueue = DispatchQueue(label: "shelf.clipboard.capture", qos: .userInitiated)
 
     private static let concealedType = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
@@ -57,7 +57,8 @@ final class ClipboardMonitor {
 
         if let bundleId, PreferencesStore.shared.ignoredBundleIds.contains(bundleId) { return }
 
-        if let fileURLs = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL],
+        if types.contains(.fileURL),
+           let fileURLs = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL],
            let first = fileURLs.first, first.isFileURL {
             let hash = ClipboardItem.sha256(first.absoluteString)
             let item = ClipboardItem(type: .file, fileURLString: first.absoluteString, hash: hash,
@@ -66,15 +67,16 @@ final class ClipboardMonitor {
             return
         }
 
-        if let images = pasteboard.readObjects(forClasses: [NSImage.self]) as? [NSImage],
-           let img = images.first,
-           let tiff = img.tiffRepresentation {
+        // Grab the raw bytes rather than building an NSImage: decoding a large
+        // screenshot on the main thread is what stalls the whole app.
+        if types.contains(.tiff) || types.contains(.png),
+           let imageData = pasteboard.data(forType: .tiff) ?? pasteboard.data(forType: .png) {
             guard PreferencesStore.shared.storeImages else { return }
             processingQueue.async { [weak self] in
                 guard let self else { return }
-                let hash = ClipboardItem.sha256(tiff)
+                let hash = ClipboardItem.sha256(imageData)
                 let filename = "\(hash).png"
-                guard self.imageStore.save(tiff: tiff, filename: filename) else { return }
+                guard self.imageStore.save(imageData: imageData, filename: filename) else { return }
                 let item = ClipboardItem(type: .image, imageFilename: filename, hash: hash,
                                          sourceBundleId: bundleId, sourceAppName: appName)
                 self.emit(item)

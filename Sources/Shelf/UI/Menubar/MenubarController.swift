@@ -119,7 +119,7 @@ final class MenubarController {
     }
 
     private func recentTitle(for item: ClipboardItem) -> String {
-        let raw = item.previewText.replacingOccurrences(of: "\n", with: " ")
+        let raw = item.previewText.prefix(200).replacingOccurrences(of: "\n", with: " ")
         let trimmed = raw.trimmingCharacters(in: .whitespaces)
         return trimmed.count > 32 ? String(trimmed.prefix(32)) + "…" : trimmed
     }
