@@ -25,7 +25,6 @@ build/
 
 # Generated icons (rebuilt from assets/logo.png on every release)
 Sources/Shelf/Resources/AppIcon.icns
-Sources/Shelf/Resources/MenubarIcon.png
 
 # CocoaPods
 Pods/

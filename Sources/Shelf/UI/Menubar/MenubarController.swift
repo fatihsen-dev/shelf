@@ -90,16 +90,31 @@ final class MenubarController {
         statusItem.menu = menu
     }
 
+    /// Monochrome template glyph of the app logo (three cards in a drawer), so the
+    /// system tints it like every other menu bar icon (light/dark, highlighted).
     private func menubarImage() -> NSImage? {
-        let bundle = Bundle.main
-        if let url = bundle.url(forResource: "MenubarIcon", withExtension: "png"),
-           let img = NSImage(contentsOf: url) {
-            img.size = NSSize(width: 18, height: 18)
-            return img
+        let img = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
+            NSColor.black.setFill()
+            NSColor.black.setStroke()
+            // Cards peeking out of the drawer (middle one taller)
+            let cards: [(x: CGFloat, top: CGFloat)] = [(4.0, 3.9), (7.7, 2.2), (11.4, 3.9)]
+            for card in cards {
+                NSBezierPath(roundedRect: NSRect(x: card.x, y: card.top, width: 2.6, height: 7.6 - card.top),
+                             xRadius: 0.8, yRadius: 0.8).fill()
+            }
+            // Drawer outline
+            let drawer = NSBezierPath(roundedRect: NSRect(x: 1.75, y: 8.85, width: 14.5, height: 6.4),
+                                      xRadius: 2.5, yRadius: 2.5)
+            drawer.lineWidth = 1.5
+            drawer.stroke()
+            // Handle
+            NSBezierPath(roundedRect: NSRect(x: 6.5, y: 11.3, width: 5.0, height: 1.5),
+                         xRadius: 0.75, yRadius: 0.75).fill()
+            return true
         }
-        let fallback = NSImage(systemSymbolName: "clipboard", accessibilityDescription: "Shelf")
-        fallback?.isTemplate = true
-        return fallback
+        img.isTemplate = true
+        img.accessibilityDescription = "Shelf"
+        return img
     }
 
     private func menuItemIcon(_ symbolName: String) -> NSImage? {
